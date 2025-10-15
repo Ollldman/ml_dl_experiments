@@ -1,4 +1,6 @@
-
+from PIL import Image
+import torch
+from torchvision import transform
 
 def predict_top3(image_path):
     image = Image.open(image_path).convert("RGB")
