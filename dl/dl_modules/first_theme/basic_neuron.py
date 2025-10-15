@@ -3,7 +3,7 @@ from matplotlib.pylab import ArrayLike
 import numpy as np
 
 
-from basic_relu import relu
+from func_activation.basic_relu import relu
 
 
 def neuron(inputs: ArrayLike, weights: ArrayLike, bias: float)-> float:
