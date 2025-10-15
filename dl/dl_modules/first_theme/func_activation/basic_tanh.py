@@ -1,6 +1,7 @@
 import numpy as np
+from numpy.typing import ArrayLike
 
-def tanh(x: float) -> float:
+def tanh(x: float | ArrayLike) -> float | np.ndarray:
     """
     tanh(x) = (np.exp(x) - np.exp(-x)) / (np.exp(x) + np.exp(-x))
 
@@ -17,4 +18,5 @@ def tanh(x: float) -> float:
     
     Вычислительно затратнее сигмоиды.
     """
+    x = np.asarray(x)
     return np.tanh(x)

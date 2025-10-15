@@ -1,7 +1,7 @@
 import numpy as np
+from numpy.typing import ArrayLike
 
-
-def relu(x: float)-> float:
+def relu(x: float | ArrayLike)-> float | np.ndarray:
     """
     Вы увидите линейный рост для x>0 и ноль для x≤0.
 

@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.typing import ArrayLike
 
-from basic_sigmoid import sigmoid
+from func_activation import sigmoid
 
 
 def swish(x: ArrayLike, beta: float = 1.) -> np.ndarray:
