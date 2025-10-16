@@ -1,7 +1,8 @@
 import numpy as np
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
+from typing import Union
 
-def sigmoid(x: float | ArrayLike) -> float | np.ndarray:
+def sigmoid(x: ArrayLike) -> NDArray[np.float64]:
     """
     Функция подходит для задач бинарной классификации — например, «да/нет», «болен/здоров».
     
@@ -15,5 +16,5 @@ def sigmoid(x: float | ArrayLike) -> float | np.ndarray:
     При больших по модулю значениях x градиент затухает, из-за этого глубокие сети медленно обучаются.
     Выходы не центрированы вокруг нуля. Выходы сигмоиды всегда положительны, а значит, градиенты на следующих слоях тоже будут одного знака, и при обновлении весов «смещение» в каждую итерацию идёт в одном направлении. Из-за этого сходимость может замедляться по сравнению с функциями, дающими выходы с нулевым средним (например, tanh с диапазоном ).
     """
-    x = np.asarray(x)
-    return 1 / (1 + np.exp(-x))
+    x = np.asarray(x, dtype=np.float64)
+    return 1 / (1 + np.exp(-np.clip(x, -500, 500)))

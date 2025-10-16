@@ -1,7 +1,7 @@
 import numpy as np
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, NDArray
 
-def relu(x: float | ArrayLike)-> float | np.ndarray:
+def relu(x: ArrayLike)-> NDArray[np.float64]:
     """
     Вы увидите линейный рост для x>0 и ноль для x≤0.
 
@@ -23,4 +23,5 @@ def relu(x: float | ArrayLike)-> float | np.ndarray:
 
     Не центрирована вокруг нуля.
     """
+    x = np.asarray(x, dtype=np.float64)
     return np.maximum(0, x)
