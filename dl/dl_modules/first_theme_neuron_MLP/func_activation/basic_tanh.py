@@ -20,3 +20,7 @@ def tanh(x: ArrayLike) -> NDArray[np.float64]:
     """
     x = np.asarray(x, dtype=np.float64)
     return np.tanh(x)
+
+def tanh_derivative(x: ArrayLike) -> NDArray[np.float64]:
+    x = np.asarray(x, dtype=np.float64)
+    return 1 - tanh(x)**2

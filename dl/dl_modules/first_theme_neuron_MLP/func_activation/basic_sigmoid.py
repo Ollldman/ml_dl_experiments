@@ -18,3 +18,9 @@ def sigmoid(x: ArrayLike) -> NDArray[np.float64]:
     """
     x = np.asarray(x, dtype=np.float64)
     return 1 / (1 + np.exp(-np.clip(x, -500, 500)))
+
+
+def sigmoid_derivative(x: ArrayLike) -> NDArray[np.float64]:
+    x = np.asarray(x, dtype=np.float64)
+    s: NDArray[np.float64] = sigmoid(x)
+    return s * (1 - s)
