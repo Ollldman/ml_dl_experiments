@@ -4,7 +4,13 @@ import matplotlib.pyplot as plt
 from typing import List, Union, Any, Sequence
 
 from basic_MLP import MLP
-from metrics import mse
+from metrics import (
+    mae,
+    mse,
+    huber,
+    log_loss,
+    categorical_cross_entropy
+)
 
 
 class MLP_learner_GD():
@@ -13,7 +19,7 @@ class MLP_learner_GD():
                 y: ArrayLike, 
                 model: str = "MLP",
                 activation: str = 'sigmoid',
-                loss_function: str = 'mse',
+                loss_function_name: str = 'mse',
                 layer_sizes: Sequence[int] = [1, 30, 1], 
                 learning_rate: np.float64 = np.float64(0.01), 
                 epochs: int = 100, 
@@ -37,6 +43,18 @@ class MLP_learner_GD():
         Обобщающая способность. Малые батчи (вплоть до SGD) обычно дают лучшие результаты на тесте из-за регуляризации шума, крупные батчи могут хуже обобщать (generalization gap).
 
         Шумность. Шум градиента обратно пропорционален размеру батча. Малый батч — большой шум, большой батч — малый шум.
+
+        :param: loss_function_name: str
+
+        Using this function names:
+
+        mae,
+
+        mse,
+
+        huber,
+
+        categorical_cross_entropy
         """
         self.layer_sizes: Sequence[int] = layer_sizes
         self.lr: np.float64 = np.float64(learning_rate)
@@ -49,10 +67,10 @@ class MLP_learner_GD():
         self.X: NDArray[np.float64] = np.asarray(X, dtype=np.float64)
         self.y: NDArray[np.float64] = np.asarray(y, dtype=np.float64)
         self.model = model
-        if loss_function == 'mse':
-            self.loss_function_name = loss_function
+        if loss_function_name == 'mse':
+            self.loss_function_name = loss_function_name
         else:
-            raise ValueError(f'This loss function is not exist now: {loss_function}')
+            raise ValueError(f'This loss function is not exist now: {loss_function_name}')
         
         if self.model == 'MLP':
             try:
@@ -62,11 +80,17 @@ class MLP_learner_GD():
             except Exception as e:
                 raise ValueError(f'Warning by creating estimator model: {e}')
         
-    def loss_function(self, 
+    def _loss_function(self, 
                       preds: NDArray[np.float64],
                       y_true: NDArray[np.float64]) -> np.floating[Any] | np.complexfloating[Any, Any]:
         if self.loss_function_name == 'mse':
             return mse(y_pred=preds, y_true=y_true)
+        elif self.loss_function_name == 'mae':
+            return mae(y_pred=preds, y_true=y_true)
+        elif self.loss_function_name == 'huber':
+            return huber(y_pred=preds, y_true=y_true)
+        elif self.loss_function_name == 'categorical_cross_entropy':
+            return categorical_cross_entropy(y_pred=preds, y_true=y_true)
         else:
             raise ValueError(f'This loss function is not found: {self.loss_function_name}')
 
@@ -101,7 +125,7 @@ class MLP_learner_GD():
                 full_pred: NDArray[np.float64] = self.estimator.forward(self.X)
                 # Запомниаем текущие потери
                 self.loss_history.append(
-                    self.loss_function(y_true=self.y, preds=full_pred))
+                    self._loss_function(y_true=self.y, preds=full_pred))
                 # Будем выводить статистику обучения только каждые N epoch
                 if epoch % self.epoch_output == 0:
                     print(f"Epoch {epoch:3d}, loss={self.loss_history[-1]:.4f}")
@@ -109,7 +133,7 @@ class MLP_learner_GD():
         elif GD_type == 'batch_GD':
             for epoch in range(1, self.epochs+1):
                 preds = self.estimator.forward(self.X)
-                loss = self.loss_function(preds=preds, y_true=self.y)
+                loss = self._loss_function(preds=preds, y_true=self.y)
                 self.loss_history.append(loss)
 
                 self.estimator.backward(self.y)
@@ -140,7 +164,7 @@ class MLP_learner_GD():
                     self.grad_norms.append(np.linalg.norm(grads))
                     self.estimator.update_params(self.lr)
 
-                loss = self.loss_function(self.estimator.forward(self.X), self.y)
+                loss = self._loss_function(self.estimator.forward(self.X), self.y)
                 self.loss_history.append(loss)
                 if epoch % self.epoch_output == 0:
                     print(f"Epoch {epoch}: loss={loss:.4f}, ||grad||={self.grad_norms[-1]:.4f}")
