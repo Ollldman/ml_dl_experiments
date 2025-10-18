@@ -18,19 +18,23 @@ class MLP:
             self,
             layer_sizes: Sequence[int], 
             activation: str = 'sigmoid')-> None:
-        
+        # Архитектура сети
         self.layer_sizes: NDArray[np.integer] = np.asarray(layer_sizes, dtype=int)
+        # Функция активации
         self.activation: str = activation
-
-        self.W: List[NDArray[np.float64]] = []      # список матриц весов
-        self.b: List[NDArray[np.float64]] = []      # список векторов смещений
-
-        self.Z_list: List[NDArray[np.float64]] = []
-        self.A_list: List[NDArray[np.float64]] = []
-
+        # список матриц весов
+        self.W: List[NDArray[np.float64]] = []
+        # список векторов смещений
+        self.b: List[NDArray[np.float64]] = []      
+        # список net-inputs каждого слоя
+        self.Z_list: List[NDArray[np.float64]] = [] 
+        # список результатов активации каждого слоя
+        self.A_list: List[NDArray[np.float64]] = [] 
+        # Список градиентов векторов весов
         self.dW_list: List[NDArray[np.float64]] = []
+        # Список градиентов вектора смещений
         self.db_list: List[NDArray[np.float64]] = []
-
+        # Инициализация весов и смещений сети
         # В цикле заполнить self.W и self.b случайными параметрами
         for i in range(len(layer_sizes) - 1):
             in_dim: int = int(layer_sizes[i])
@@ -38,10 +42,50 @@ class MLP:
             self.W.append(np.random.randn(in_dim, out_dim) * 0.1)
             self.b.append(np.zeros((1, out_dim)))
 
+    def _activation(
+            self,
+            Z: NDArray[np.float64]) -> NDArray[np.float64]:
+        """
+        Возвращает функцию активации из доступных
+        """
+        if self.activation == 'sigmoid':
+            return sigmoid(Z)
+        elif self.activation == 'relu':
+            return relu(Z)
+        elif self.activation == 'tanh':
+            return tanh(Z)
+        elif self.activation == 'sin':
+            return sin_f(Z)
+        else:
+            raise ValueError(f'Unknown activation {self.activation}')
+        
+    def _activation_derivative(
+            self,
+            z: NDArray[np.float64]) -> NDArray[np.float64]:
+        """
+        Возвращает производную функции активации из доступных
+        """
+        if self.activation == 'sigmoid':
+            return sigmoid_derivative(z)
+        elif self.activation == 'tanh':
+            return tanh_derivative(z)
+        elif self.activation == 'sin':
+            return sin_derivative(z)
+        else:
+            raise ValueError(f'Unknown activation {self.activation}')
+
     # Метод forward    
     def forward(self, X: ArrayLike) -> NDArray[np.float64]:
         """
         Forward to MLP
+        При первом вызове заполняет значения Z и активаций для каждого слоя.
+
+        Возвращает первое предсказание. (активацию на последнем слое)
+
+        Последующие запуски используются для получения промежуточных предсказаний,
+        для анализа функции потерь в процессе обучения.
+
+        :return: y_pred: NDArray[np.float64], предсказание модели
         """
         # очищаем списки перед новым вызовом
         self.Z_list, self.A_list = [], []
@@ -56,39 +100,23 @@ class MLP:
             self.Z_list.append(Z)
             # Определяем функцию активации пока только для всех слоев, кроме выходного, т.к. там выбор функции влияет на характер решаемой задачи (классификация или регрессия)
             if i < len(self.W) - 1:
-                if self.activation == 'sigmoid':
-                    A = sigmoid(Z)
-                elif self.activation == 'relu':
-                    A = relu(Z)
-                elif self.activation == 'tanh':
-                    A = tanh(Z)
-                elif self.activation == 'sin':
-                    A = sin_f(Z)
-                else:
-                    raise ValueError(f'Unknown activation {self.activation}')
+                A = self._activation(Z)
             else:
                 A = Z  # линейный выход для последнего слоя
             # Добавляем получившуюся активацию
             self.A_list.append(A)
-
         return A
-    
-    def forward_with_activations(self, X: ArrayLike) -> List[NDArray[np.float64]]:
-        """
-            This function return list of forward activations to all layers in MLP
-        """
-        activations: List[NDArray[np.float64]] = [np.asarray(X, dtype=np.float64)]
-        A: NDArray[np.float64] = np.asarray(X, dtype=np.float64)
-        for i, (W, b) in enumerate(zip(self.W, self.b)):
-            Z: NDArray[np.float64] = A @ W + b
-            if i < len(self.W) - 1:
-                A = sigmoid(Z)
-            else:
-                A = Z
-            activations.append(A)
-        return activations
-    
+      
     def backward(self, y_true: NDArray[np.float64]) -> None:
+        """
+        Реализация алгоритма `backpropogation` и обратного распространения ошибки.
+
+        Используется цепное правило для определения `delta` на каждом слое нейросети.
+
+        `delta` используется для расчета градиентов векторов весов и смещений для каждого слоя.
+
+        (Сейчас добавлена дробь `2 / m`  для стабилизации delta в случае большого батча при инициализации на входном слое.)
+        """
         m: int = y_true.shape[0]  # количество примеров
 
         # δ на выходном слое (линейный + MSE)
@@ -113,12 +141,7 @@ class MLP:
             W_next: NDArray[np.float64] = self.W[l]  # веса слоя l+1
 
             # δ^l = (δ^{l+1} · W^{l+1}ᵀ) * σ'(z^l)
-            if self.activation == 'sigmoid':
-                delta = (delta @ W_next.T) * sigmoid_derivative(z)
-            elif self.activation == 'tanh':
-                delta = (delta @ W_next.T) * tanh_derivative(z)
-            elif self.activation == 'sin':
-                 delta = (delta @ W_next.T) * sin_derivative(z)
+            delta = (delta @ W_next.T) * self._activation_derivative(z)
 
             # Градиенты для слоя l
             dW = a_prev.T @ delta
@@ -135,3 +158,20 @@ class MLP:
         for i in range(len(self.W)):
             self.W[i] -= lr * self.dW_list[i]
             self.b[i] -= lr * self.db_list[i]
+
+    def forward_with_activations(self, X: ArrayLike) -> List[NDArray[np.float64]]:
+        """
+            This function return list of forward activations to all layers in MLP
+            
+            Не используется для обычной работы и обучения и создан для анализа!!!!
+        """
+        activations: List[NDArray[np.float64]] = [np.asarray(X, dtype=np.float64)]
+        A: NDArray[np.float64] = np.asarray(X, dtype=np.float64)
+        for i, (W, b) in enumerate(zip(self.W, self.b)):
+            Z: NDArray[np.float64] = A @ W + b
+            if i < len(self.W) - 1:
+                A = sigmoid(Z)
+            else:
+                A = Z
+            activations.append(A)
+        return activations
