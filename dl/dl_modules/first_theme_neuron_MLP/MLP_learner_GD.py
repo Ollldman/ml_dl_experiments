@@ -231,7 +231,7 @@ class MLP_learner_GD():
                     and wait \
                     and X_val \
                     and Y_val:
-                    best_val_loss = -np.inf
+                    best_val_loss = np.inf
                     val_preds = self.estimator.forward(X_val)
                     val_loss = self._loss_function(val_preds, Y_val)  # например, MSE
                     print(f"Epoch {epoch}: val_loss = {val_loss:.4f}, lr = {self.lr:.5f}")

@@ -68,22 +68,25 @@ class MLP:
         for i in range(len(layer_sizes) - 1):
             in_dim: int = int(layer_sizes[i])
             out_dim: int = int(layer_sizes[i + 1])
-            self.W.append(np.random.randn(in_dim, out_dim) * 0.1)
+            self.W.append(
+                np.random.randn(in_dim, out_dim) * np.sqrt(2/(in_dim + out_dim)))
             self.b.append(np.zeros((1, out_dim)))
+        self.G_W = [np.zeros_like(w) for w in self.W]
+        self.G_b = [np.zeros_like(b) for b in self.b]
             #  Инициализируем скорости весов и смещений для обновления через момент
-            if self.momentum:  
-                self.velocity_W.append(np.zeros((in_dim, out_dim), dtype=np.float64))
-                # Скорость обновления смещений каждого слоя
-                self.velocity_b.append(np.zeros((1, len(self.b)), dtype=np.float64))
-            if self.beta:
-                # Скорость обновления весов каждого слоя
-                self.S_W.append(np.zeros((in_dim, out_dim), dtype=np.float64))
-                # Скорость обновления смещений каждого слоя
-                self.S_b.append(np.zeros((1, len(self.b)), dtype=np.float64))
-                if self.beta_two:
-                    # Моменты для смещений и весов
-                    self.V_W.append(np.zeros((in_dim, out_dim), dtype=np.float64))
-                    self.V_b.append(np.zeros((1, len(self.b)), dtype=np.float64))
+        if self.momentum:  
+            self.velocity_W = [np.zeros_like(w) for w in self.W]
+            # Скорость обновления смещений каждого слоя
+            self.velocity_b = [np.zeros_like(b) for b in self.b]
+        if self.beta:
+            # Скорость обновления весов каждого слоя
+            self.S_W = [np.zeros_like(w) for w in self.W]
+            # Скорость обновления смещений каждого слоя
+            self.S_b = [np.zeros_like(b) for b in self.b]
+            if self.beta_two:
+                # Моменты для смещений и весов
+                self.V_W = [np.zeros_like(w) for w in self.W]
+                self.V_b = [np.zeros_like(b) for b in self.b]
             
 
     def _activation(
