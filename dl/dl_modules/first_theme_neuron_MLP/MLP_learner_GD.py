@@ -96,78 +96,28 @@ class MLP_learner_GD():
 
         
     def learn_model(self, 
-                    GD_type: str = 'mini-batch_GD'):
+                    GD_type: str = 'mini-batch_GD',
+                    learning_rate_strategy: str | None=None,
+                    decay_factor: float | None=None,
+                    k_for_decay_step: int | None=None):
         """
         Совет по выбору стратегии: при малых данных до нескольких тысяч можно использовать полный GD (batch_GD) для стабильности. На очень больших данных и в онлайн-режиме применяют SGD или мини-батч (mini-batch_GD). mini-batch_GD считается самым распространённым для нейросетей благодаря балансу «шум/вычислительность».
         """
         self.GDtype: str = GD_type
         if GD_type == 'mini-batch_GD':
-            for epoch in range(1, self.epochs+1):
-                # Перетасовываем, для избежания быстрого переобучения
-                perm: NDArray[np.long] = np.random.permutation(len(self.X))
-                # Выделяем только те части, которые попали от permutation
-                X_sh, y_sh = self.X[perm], self.y[perm]
-                # mini-batch learning:
-                for start in range(0, len(self.X), self.batch_size):
-                    xb: NDArray[np.float64] = X_sh[start : start + self.batch_size]
-                    yb: NDArray[np.float64] = y_sh[start : start + self.batch_size]
-                    # Прямой проход
-                    _ = self.estimator.forward(xb)
-                    # Обратный проход
-                    self.estimator.backward(yb)
-                    grads: NDArray[np.float64] = np.concatenate(
-                        [g.ravel() for g in self.estimator.dW_list] + 
-                        [f.ravel() for f in self.estimator.db_list])
-                    self.grad_norms.append(np.linalg.norm(grads))
-                    # Обновление параметров
-                    self.estimator.update_params(self.lr)
-                # Прямой проход на всех данных необходим для вычисления потерь
-                full_pred: NDArray[np.float64] = self.estimator.forward(self.X)
-                # Запомниаем текущие потери
-                self.loss_history.append(
-                    self._loss_function(y_true=self.y, preds=full_pred))
-                # Будем выводить статистику обучения только каждые N epoch
-                if epoch % self.epoch_output == 0:
-                    print(f"Epoch {epoch:3d}, loss={self.loss_history[-1]:.4f}")
+            self._mini_batch_gd(learning_rate_strategy,
+                                decay_factor,
+                                k_for_decay_step)
 
         elif GD_type == 'batch_GD':
-            for epoch in range(1, self.epochs+1):
-                preds = self.estimator.forward(self.X)
-                loss = self._loss_function(preds=preds, y_true=self.y)
-                self.loss_history.append(loss)
-
-                self.estimator.backward(self.y)
-                # Градиент смещения и весов объединяем
-                grads: NDArray[np.float64] = np.concatenate(
-                    [g.ravel() for g in self.estimator.dW_list] + 
-                    [f.ravel() for f in self.estimator.db_list])
-                # Норма градиента в список
-                self.grad_norms.append(np.linalg.norm(grads))
-
-                self.estimator.update_params(self.lr)
-                if epoch % self.epoch_output == 0:
-                    print(f"Epoch {epoch}: loss={loss:.4f}, ||grad||={self.grad_norms[-1]:.4f}")
+            self._batch_GD(learning_rate_strategy,
+                      decay_factor,
+                      k_for_decay_step)
 
         elif GD_type == 'SGD':
-            for epoch in range(1, self.epochs+1):
-                # Перемешайте индексы наблюдений
-                perm = np.random.permutation(len(self.X))
-                for i in perm:
-                    # Получите xi и yi из X и Y
-                    xi, yi = self.X[i:1 + i], self.y[i: i+1]
-                    # Прямой и обратный проход внутри цикла
-                    self.estimator.forward(xi)
-                    self.estimator.backward(yi)
-                    grads = np.concatenate(
-                        [g.ravel() for g in self.estimator.dW_list] +
-                        [g.ravel() for g in self.estimator.db_list])
-                    self.grad_norms.append(np.linalg.norm(grads))
-                    self.estimator.update_params(self.lr)
-
-                loss = self._loss_function(self.estimator.forward(self.X), self.y)
-                self.loss_history.append(loss)
-                if epoch % self.epoch_output == 0:
-                    print(f"Epoch {epoch}: loss={loss:.4f}, ||grad||={self.grad_norms[-1]:.4f}")
+            self._SGD(learning_rate_strategy,
+                      decay_factor,
+                      k_for_decay_step)
         else:
             raise ValueError(f'This GD is not exist in that module: {GD_type}')
 
@@ -209,3 +159,105 @@ class MLP_learner_GD():
     def get_learned_estimator(self) -> MLP:
         return self.estimator
     
+    #######################
+    #    GRADIEND         #
+    #    descents         #
+    #                     #
+    #######################
+    def _mini_batch_gd(self,
+                       learning_rate_strategy: str | None=None,
+                       decay_factor: float | None=None,
+                       k_for_decay_step: int | None=None) -> None:
+            for epoch in range(1, self.epochs+1):
+                # Перетасовываем, для избежания быстрого переобучения
+                perm: NDArray[np.long] = np.random.permutation(len(self.X))
+                # Выделяем только те части, которые попали от permutation
+                X_sh, y_sh = self.X[perm], self.y[perm]
+                # mini-batch learning:
+                for start in range(0, len(self.X), self.batch_size):
+                    xb: NDArray[np.float64] = X_sh[start : start + self.batch_size]
+                    yb: NDArray[np.float64] = y_sh[start : start + self.batch_size]
+                    # Прямой проход
+                    _ = self.estimator.forward(xb)
+                    # Обратный проход
+                    self.estimator.backward(yb)
+                    grads: NDArray[np.float64] = np.concatenate(
+                        [g.ravel() for g in self.estimator.dW_list] + 
+                        [f.ravel() for f in self.estimator.db_list])
+                    self.grad_norms.append(np.linalg.norm(grads))
+                    # Обновление параметров
+                    self.estimator.update_params(self.lr)
+                # Прямой проход на всех данных необходим для вычисления потерь
+                full_pred: NDArray[np.float64] = self.estimator.forward(self.X)
+                # Запомниаем текущие потери
+                self.loss_history.append(
+                    self._loss_function(y_true=self.y, preds=full_pred))
+                # Будем выводить статистику обучения только каждые N epoch
+                # Примем во внимание возможные стратегии обновления шага обучения
+                if learning_rate_strategy == 'step_decay'\
+                    and k_for_decay_step \
+                    and decay_factor:
+
+                    if epoch % k_for_decay_step == 0:
+                        self.lr *= decay_factor
+
+                if epoch % self.epoch_output == 0:
+                    print(f"Epoch {epoch:3d}, loss={self.loss_history[-1]:.4f}")
+
+
+    def _batch_GD(self,
+                   learning_rate_strategy: str | None=None,
+                   decay_factor: float | None=None,
+                   k_for_decay_step: int | None=None) -> None:
+        for epoch in range(1, self.epochs+1):
+            preds = self.estimator.forward(self.X)
+            loss = self._loss_function(preds=preds, y_true=self.y)
+            self.loss_history.append(loss)
+
+            self.estimator.backward(self.y)
+            # Градиент смещения и весов объединяем
+            grads: NDArray[np.float64] = np.concatenate(
+                [g.ravel() for g in self.estimator.dW_list] + 
+                [f.ravel() for f in self.estimator.db_list])
+            # Норма градиента в список
+            self.grad_norms.append(np.linalg.norm(grads))
+
+            self.estimator.update_params(self.lr)
+            if learning_rate_strategy == 'step_decay'\
+                    and k_for_decay_step \
+                    and decay_factor:
+
+                    if epoch % k_for_decay_step == 0:
+                        self.lr *= decay_factor
+            if epoch % self.epoch_output == 0:
+                print(f"Epoch {epoch}: loss={loss:.4f}, ||grad||={self.grad_norms[-1]:.4f}")
+    
+    def _SGD(self,
+              learning_rate_strategy: str | None=None,
+              decay_factor: float | None=None,
+              k_for_decay_step: int | None=None) -> None:
+        for epoch in range(1, self.epochs+1):
+            # Перемешайте индексы наблюдений
+            perm = np.random.permutation(len(self.X))
+            for i in perm:
+                # Получите xi и yi из X и Y
+                xi, yi = self.X[i:1 + i], self.y[i: i+1]
+                # Прямой и обратный проход внутри цикла
+                self.estimator.forward(xi)
+                self.estimator.backward(yi)
+                grads = np.concatenate(
+                    [g.ravel() for g in self.estimator.dW_list] +
+                    [g.ravel() for g in self.estimator.db_list])
+                self.grad_norms.append(np.linalg.norm(grads))
+                self.estimator.update_params(self.lr)
+            
+            if learning_rate_strategy == 'step_decay'\
+                    and k_for_decay_step \
+                    and decay_factor:
+
+                    if epoch % k_for_decay_step == 0:
+                        self.lr *= decay_factor
+            loss = self._loss_function(self.estimator.forward(self.X), self.y)
+            self.loss_history.append(loss)
+            if epoch % self.epoch_output == 0:
+                print(f"Epoch {epoch}: loss={loss:.4f}, ||grad||={self.grad_norms[-1]:.4f}")

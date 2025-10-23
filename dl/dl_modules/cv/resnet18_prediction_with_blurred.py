@@ -1,6 +1,6 @@
-from PIL import Image, ImageFilter
 import torch
-from torchvision import models, transforms
+from torchvision import models
+from torchvision.transforms import v2
 from PIL import Image, ImageFilter
 import requests
 import matplotlib.pyplot as plt
@@ -11,29 +11,29 @@ classes = requests.get(imagenet_labels_url).json()
 
 # Загрузка предобученной модели ResNet и перевод её в режим инференса
 # Создание пустой модели
-model = models.resnet18(pretrained=False) 
+model = models.resnet18(pretrained=True, weights='DEFAULT') 
 
-# Загрузка весов
-model.load_state_dict(torch.load('/models/resnet18_weights.pth'))
+# # Загрузка весов
+# model.load_state_dict(torch.load('/models/resnet18_weights.pth'))
 model.eval()
 
 # Определение преобразований для изображения
-transform = transforms.Compose([
-    transforms.Resize(256),
-    transforms.CenterCrop(224),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-])
+transform = v2.Compose([
+            v2.Resize(256),
+            v2.CenterCrop(224),
+            v2.ToImage(),
+            v2.ToDtype(torch.float32, scale=True),
+            v2.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
 
 
-image = Image.open("/data/sneakers.jpg").convert('RGB')
+image = Image.open("./data/sneakers.jpg").convert('RGB')
 
 # Добавляем размытие с помощью фильтра GaussianBlur
 blurred_image =image.filter(ImageFilter.GaussianBlur(radius=10))
 
 # Сравниваем предсказания для оригинального изображения и изображения с шумом
-original_pred = predict_top3(image)
-blurred_pred = predict_top3(blurred_image)
+original_pred = predict_top3(model, image, classes)
+blurred_pred = predict_top3(model, blurred_image, classes)
 
 print("Оригинал:", original_pred)
 print("С шумом:", blurred_pred)
