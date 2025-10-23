@@ -21,7 +21,8 @@ class MLP:
             beta: np.float64 | None = None,
             beta_two: np.float64 | None = None,
             weight_decay: np.float64 | None = None,
-            activation: str = 'sigmoid')-> None:
+            activation: str = 'sigmoid',
+            l_reg: np.float64 | None = None)-> None:
         # Архитектура сети
         self.layer_sizes: NDArray[np.integer] = np.asarray(layer_sizes, dtype=int)
         # Функция активации
@@ -62,6 +63,7 @@ class MLP:
         # Коэффициент для деления на ноль:
         self.epsilon: float = 10e-8
         self.iterations: int = 0
+        self.l_reg: np.float64 | None = l_reg if l_reg else np.float64(1.0)
 
         # Инициализация весов и смещений сети
         # В цикле заполнить self.W и self.b случайными параметрами
@@ -350,3 +352,9 @@ class MLP:
                 A = Z
             activations.append(A)
         return activations
+    
+
+"""
+1. Разобраться как организовать структуру более грамотно
+2. Добавить поддержку регуляризации
+"""
