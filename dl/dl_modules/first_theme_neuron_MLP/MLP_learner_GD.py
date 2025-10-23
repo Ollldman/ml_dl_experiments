@@ -97,13 +97,18 @@ class MLP_learner_GD():
         
     def learn_model(self, 
                     GD_type: str = 'mini-batch_GD',
+                    update_params_type: str = 'SGD',
                     learning_rate_strategy: str | None=None,
                     decay_factor: float | None=None,
                     k_for_decay_step: int | None=None):
         """
-        Совет по выбору стратегии: при малых данных до нескольких тысяч можно использовать полный GD (batch_GD) для стабильности. На очень больших данных и в онлайн-режиме применяют SGD или мини-батч (mini-batch_GD). mini-batch_GD считается самым распространённым для нейросетей благодаря балансу «шум/вычислительность».
+        Совет по выбору стратегии (GD_type): при малых данных до нескольких тысяч можно использовать полный GD (batch_GD) для стабильности. На очень больших данных и в онлайн-режиме применяют SGD (stohastic gradient descent) или мини-батч (mini-batch_GD). mini-batch_GD считается самым распространённым для нейросетей благодаря балансу «шум/вычислительность».
+
+        Специфика обновления параметров модели (update_params_type):
+        Если модель не сходится или переобучается, можно попробовать поменять оптимизатор: например, заменить SGD на Adam или наоборот, а потом сравнить результаты их работы.
         """
         self.GDtype: str = GD_type
+        self.update_params_type: str = update_params_type
         if GD_type == 'mini-batch_GD':
             self._mini_batch_gd(learning_rate_strategy,
                                 decay_factor,
@@ -182,7 +187,7 @@ class MLP_learner_GD():
             for epoch in range(1, self.epochs+1):
                 if learning_rate_strategy == "exp_fall" and k_for_exp_fall:
                     self.lr *= np.exp(-k_for_exp_fall * epoch)
-                elif learning_rate_strategy == "one_ont_t" and k_for_one_on_t:
+                elif learning_rate_strategy == "one_on_t" and k_for_one_on_t:
                     self.lr /= (1 + k_for_one_on_t * epoch)
 
                 # Перетасовываем, для избежания быстрого переобучения
@@ -244,16 +249,21 @@ class MLP_learner_GD():
 
 
     def _batch_GD(self,
-                   learning_rate_strategy: str | None=None,
-                   decay_factor: float | None=None,
-                   k_for_decay_step: int | None=None,
-                   k_for_exp_fall: float | None = None) -> None:
+                   learning_rate_strategy: str | None = None,
+                    decay_factor: float | None = None,
+                    k_for_decay_step: int | None = None,
+                    k_for_exp_fall: float| None = None,
+                    k_for_one_on_t: float | None = None,
+                    patience: int| None = None,
+                    wait: int | None = None,
+                    X_val = None,
+                    Y_val = None) -> None:
         for epoch in range(1, self.epochs+1):
             if learning_rate_strategy == "exp_fall" and k_for_exp_fall:
                     self.lr *= np.exp(-k_for_exp_fall * epoch)
-            else:
-                raise ValueError(
-                    f"That K_for_exp_fall is not exist: {k_for_exp_fall}")
+            elif learning_rate_strategy == "one_ont_t" and k_for_one_on_t:
+                self.lr /= (1 + k_for_one_on_t * epoch)
+
             preds = self.estimator.forward(self.X)
             loss = self._loss_function(preds=preds, y_true=self.y)
             self.loss_history.append(loss)
@@ -267,20 +277,52 @@ class MLP_learner_GD():
             self.grad_norms.append(np.linalg.norm(grads))
 
             self.estimator.update_params(self.lr)
+            # Примем во внимание возможные стратегии обновления шага обучения
             if learning_rate_strategy == 'step_decay'\
-                    and k_for_decay_step \
-                    and decay_factor:
+                and k_for_decay_step \
+                and decay_factor:
 
-                    if epoch % k_for_decay_step == 0:
-                        self.lr *= decay_factor
+                if epoch % k_for_decay_step == 0:
+                    self.lr *= decay_factor
             if epoch % self.epoch_output == 0:
                 print(f"Epoch {epoch}: loss={loss:.4f}, ||grad||={self.grad_norms[-1]:.4f}")
+            
+            if \
+                learning_rate_strategy == 'reduce_on_plateu'\
+                and patience \
+                and wait \
+                and X_val \
+                and Y_val:
+                best_val_loss = -np.inf
+                val_preds = self.estimator.forward(X_val)
+                val_loss = self._loss_function(val_preds, Y_val)  # например, MSE
+                print(f"Epoch {epoch}: val_loss = {val_loss:.4f}, lr = {self.lr:.5f}")
+
+                if val_loss < best_val_loss:
+                    best_val_loss = val_loss
+                    wait = 0
+                else:
+                    wait += 1
+                    if wait >= patience:
+                        self.lr *= 0.5
+                        wait = 0
+                        print(f"  → Plateau reached. New lr = {self.lr:.5f}")
     
     def _SGD(self,
-              learning_rate_strategy: str | None=None,
-              decay_factor: float | None=None,
-              k_for_decay_step: int | None=None) -> None:
+            learning_rate_strategy: str | None = None,
+            decay_factor: float | None = None,
+            k_for_decay_step: int | None = None,
+            k_for_exp_fall: float| None = None,
+            k_for_one_on_t: float | None = None,
+            patience: int| None = None,
+            wait: int | None = None,
+            X_val = None,
+            Y_val = None) -> None:
         for epoch in range(1, self.epochs+1):
+            if learning_rate_strategy == "exp_fall" and k_for_exp_fall:
+                    self.lr *= np.exp(-k_for_exp_fall * epoch)
+            elif learning_rate_strategy == "one_ont_t" and k_for_one_on_t:
+                self.lr /= (1 + k_for_one_on_t * epoch)
             # Перемешайте индексы наблюдений
             perm = np.random.permutation(len(self.X))
             for i in perm:
@@ -305,3 +347,23 @@ class MLP_learner_GD():
             self.loss_history.append(loss)
             if epoch % self.epoch_output == 0:
                 print(f"Epoch {epoch}: loss={loss:.4f}, ||grad||={self.grad_norms[-1]:.4f}")
+            if \
+                learning_rate_strategy == 'reduce_on_plateu'\
+                and patience \
+                and wait \
+                and X_val \
+                and Y_val:
+                best_val_loss = -np.inf
+                val_preds = self.estimator.forward(X_val)
+                val_loss = self._loss_function(val_preds, Y_val)  # например, MSE
+                print(f"Epoch {epoch}: val_loss = {val_loss:.4f}, lr = {self.lr:.5f}")
+
+                if val_loss < best_val_loss:
+                    best_val_loss = val_loss
+                    wait = 0
+                else:
+                    wait += 1
+                    if wait >= patience:
+                        self.lr *= 0.5
+                        wait = 0
+                        print(f"  → Plateau reached. New lr = {self.lr:.5f}")

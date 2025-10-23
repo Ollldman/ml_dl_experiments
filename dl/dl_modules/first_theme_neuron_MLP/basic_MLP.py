@@ -20,6 +20,7 @@ class MLP:
             momentum: np.float64 | None = None, 
             beta: np.float64 | None = None,
             beta_two: np.float64 | None = None,
+            weight_decay: np.float64 | None = None,
             activation: str = 'sigmoid')-> None:
         # Архитектура сети
         self.layer_sizes: NDArray[np.integer] = np.asarray(layer_sizes, dtype=int)
@@ -53,6 +54,7 @@ class MLP:
         # Коэффициент затухания:
         self.beta: np.float64 | None = beta if beta else None
         self.beta_two: np.float64 | None = beta_two if beta_two else None
+        self.weight_decay: np.float64 | None = weight_decay if weight_decay else None
         # список net-inputs каждого слоя
         self.Z_list: List[NDArray[np.float64]] = [] 
         # список результатов активации каждого слоя
@@ -199,6 +201,9 @@ class MLP:
         Через градиентный спуск
         Есди в модель передан параметр momentum,
         то используется обновление скоростей весов и смещения через момент инерции
+
+        SGD с momentum прост и хорошо подходит, когда можно тщательно настроить обучение. Метод известен как «конвейер» для задач компьютерного зрения. 
+
         """
         for i in range(len(self.W)):
             if self.momentum:
@@ -218,6 +223,9 @@ class MLP:
         ---------------------------
         `Идея`:  уменьшать шаг для тех параметров, у которых накоплен большой градиент, и оставлять большой шаг там, где градиенты редкие.
 
+        AdaGrad очень прост, но «умирает» из-за неограниченного накопления.
+
+        Adagrad в современных нейросетях используют редко — из-за «затухания» шага.
 
         КАК ЭТО РАБОТАЕТ:
         -----------------
@@ -245,6 +253,10 @@ class MLP:
         RMSProp: модификация AdaGrad
         ----------------------------
 
+        RMSProp добавляет «забывание» старых градиентов, благодаря чему шаг остаётся адаптивным и вдобавок не «умирает».
+
+        RMSProp аналогичен Adam по адаптивности, но без компенсирования смещения моментов. Благодаря этому он чуть дешевле в вычислениях и проще в настройке. 
+
         Идея: не накапливать квадраты градиентов до бесконечности, а использовать скользящее (экспоненциальное) среднее, чтобы шаг не «умирал». 
 
         Необходим коэффициент затухания  beta (Например 0.9)
@@ -267,9 +279,41 @@ class MLP:
 
 
     def update_adam(self, lr: np.float64) -> None:
+        """
+        Adam сочетает импульс и RMSProp, автоматически подбирая шаг на каждый параметр.
+
+        Adam популярнее в исследованиях и NLP, так как автоматически подстраивает шаги и требует меньше ручной настройки. В NLP встречаются очень разреженные градиенты: слов в тексте миллионы, но большинство слов для конкретного батча «неактивны». Adam адаптирует шаг для редких и частых параметров автоматически. 
+        """
         if self.beta and self.beta_two:
             self.iterations += 1
             for i in range(len(self.W)):
+                # обновление первого момента (скользящее среднее градиента)
+                self.V_W[i] = self.beta * self.V_W[i] + (1 - self.beta) * self.dW_list[i]
+                self.V_b[i] = self.beta * self.V_b[i] + (1 - self.beta) * self.db_list[i]
+                # обновление второго момента (скользящее среднее квадрата градиента)
+                self.S_W[i] = self.beta_two * self.S_W[i] + (1 - self.beta_two) * (self.dW_list[i] ** 2)
+                self.S_b[i] = self.beta_two * self.S_b[i] + (1 - self.beta_two) * (self.db_list[i] ** 2)
+                # коррекция смещения моментов (bias correction)
+                V_corr_w = self.V_W[i] / (1 - self.beta ** self.iterations)
+                V_corr_b = self.V_b[i] / (1 - self.beta ** self.iterations)
+                S_corr_w = self.S_W[i] / (1 - self.beta_two ** self.iterations)
+                S_corr_b = self.S_b[i] / (1 - self.beta_two ** self.iterations)
+                # обновляем параметры
+                self.W[i] -= lr * V_corr_w / (np.sqrt(S_corr_w) + self.epsilon)
+                self.b[i] -= lr * V_corr_b / (np.sqrt(S_corr_b) + self.epsilon) 
+        else:
+            self.update_params(lr)
+
+    def update_adamw(self, lr: np.float64) -> None:
+        """
+        AdamW дополнительно аккуратно выносит регуляризацию в отдельный член, улучшая обобщение.
+
+        AdamW — стандарт для трансформеров и современных архитектур, где важна регуляризация. 
+        """
+        if self.beta and self.beta_two and self.weight_decay:
+            self.iterations += 1
+            for i in range(len(self.W)):
+                self.W[i] -= lr * self.weight_decay * self.W[i]
                 # обновление первого момента (скользящее среднее градиента)
                 self.V_W[i] = self.beta * self.V_W[i] + (1 - self.beta) * self.dW_list[i]
                 self.V_b[i] = self.beta * self.V_b[i] + (1 - self.beta) * self.db_list[i]
