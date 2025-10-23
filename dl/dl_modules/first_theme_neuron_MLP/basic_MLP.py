@@ -16,7 +16,10 @@ class MLP:
 
     def __init__(
             self,
-            layer_sizes: Sequence[int], 
+            layer_sizes: Sequence[int],
+            momentum: np.float64 | None = None, 
+            beta: np.float64 | None = None,
+            beta_two: np.float64 | None = None,
             activation: str = 'sigmoid')-> None:
         # Архитектура сети
         self.layer_sizes: NDArray[np.integer] = np.asarray(layer_sizes, dtype=int)
@@ -25,15 +28,39 @@ class MLP:
         # список матриц весов
         self.W: List[NDArray[np.float64]] = []
         # список векторов смещений
-        self.b: List[NDArray[np.float64]] = []      
-        # список net-inputs каждого слоя
-        self.Z_list: List[NDArray[np.float64]] = [] 
-        # список результатов активации каждого слоя
-        self.A_list: List[NDArray[np.float64]] = [] 
+        self.b: List[NDArray[np.float64]] = []
         # Список градиентов векторов весов
         self.dW_list: List[NDArray[np.float64]] = []
         # Список градиентов вектора смещений
         self.db_list: List[NDArray[np.float64]] = []
+        # Скорость обновления весов каждого слоя
+        self.velocity_W: List[NDArray[np.float64]] = []  
+        # Скорость обновления смещений каждого слоя
+        self.velocity_b: List[NDArray[np.float64]] = []
+        # момент импульса для обновления весов-смещений
+        self.momentum: np.float64  | None = momentum if momentum else None
+        # Сумма квадратов граиента весов
+        self.G_W: List[NDArray[np.float64]] = []
+        # Сумма квадратов градиента смещений
+        self.G_b: List[NDArray[np.float64]] = []
+        # Экспоненциально накопленнае скользащее среднее квадрата граиента весов слоя
+        self.S_W: List[NDArray[np.float64]] = []
+        # Экспоненциально накопленнае скользащее среднее квадрата граиента смещений слоя
+        self.S_b: List[NDArray[np.float64]] = []
+        # Скользящее среднее квадрата градиента:
+        self.V_W: List[NDArray[np.float64]] = []
+        self.V_b: List[NDArray[np.float64]] = []
+        # Коэффициент затухания:
+        self.beta: np.float64 | None = beta if beta else None
+        self.beta_two: np.float64 | None = beta_two if beta_two else None
+        # список net-inputs каждого слоя
+        self.Z_list: List[NDArray[np.float64]] = [] 
+        # список результатов активации каждого слоя
+        self.A_list: List[NDArray[np.float64]] = [] 
+        # Коэффициент для деления на ноль:
+        self.epsilon: float = 10e-8
+        self.iterations: int = 0
+
         # Инициализация весов и смещений сети
         # В цикле заполнить self.W и self.b случайными параметрами
         for i in range(len(layer_sizes) - 1):
@@ -41,6 +68,21 @@ class MLP:
             out_dim: int = int(layer_sizes[i + 1])
             self.W.append(np.random.randn(in_dim, out_dim) * 0.1)
             self.b.append(np.zeros((1, out_dim)))
+            #  Инициализируем скорости весов и смещений для обновления через момент
+            if self.momentum:  
+                self.velocity_W.append(np.zeros((in_dim, out_dim), dtype=np.float64))
+                # Скорость обновления смещений каждого слоя
+                self.velocity_b.append(np.zeros((1, len(self.b)), dtype=np.float64))
+            if self.beta:
+                # Скорость обновления весов каждого слоя
+                self.S_W.append(np.zeros((in_dim, out_dim), dtype=np.float64))
+                # Скорость обновления смещений каждого слоя
+                self.S_b.append(np.zeros((1, len(self.b)), dtype=np.float64))
+                if self.beta_two:
+                    # Моменты для смещений и весов
+                    self.V_W.append(np.zeros((in_dim, out_dim), dtype=np.float64))
+                    self.V_b.append(np.zeros((1, len(self.b)), dtype=np.float64))
+            
 
     def _activation(
             self,
@@ -154,10 +196,96 @@ class MLP:
 
     def update_params(self, lr: np.float64) -> None:
         """Обновление весов и смещений в цикле
-        Через градиентный спуск"""
+        Через градиентный спуск
+        Есди в модель передан параметр momentum,
+        то используется обновление скоростей весов и смещения через момент инерции
+        """
         for i in range(len(self.W)):
-            self.W[i] -= lr * self.dW_list[i]
-            self.b[i] -= lr * self.db_list[i]
+            if self.momentum:
+                self.velocity_W[i] = self.momentum * \
+                    self.velocity_W[i] - lr * self.dW_list[i]
+                self.velocity_b[i] = self.momentum * \
+                    self.velocity_b[i] - lr * self.db_list[i]
+                self.b[i] += self.velocity_W[i]
+                self.W[i] += self.velocity_b[i]
+            else:
+                self.W[i] -= lr * self.dW_list[i]
+                self.b[i] -= lr * self.db_list[i]
+
+    def update_adagrad(self, lr: np.float64) -> None:
+        """
+        AdaGrad (Adaptive Gradient)
+        ---------------------------
+        `Идея`:  уменьшать шаг для тех параметров, у которых накоплен большой градиент, и оставлять большой шаг там, где градиенты редкие.
+
+
+        КАК ЭТО РАБОТАЕТ:
+        -----------------
+        Если по wi​ часто проходят большие градиенты, то si​ быстро растёт. 
+        Знаменатель дроби становится большим, и эффективный шаг η/si​ уменьшается.
+
+        Если градиенты редкие или маленькие, то si​ остаётся малым, а значит, шаг остаётся близким к η.
+
+        Однако если si​ только растёт со временем и никогда не обнуляется, то шаг будет неуклонно падать и может стать слишком малым.
+        """
+        for i in range(len(self.W)):
+            # аккумулируем сумму квадратов градиентов
+            self.G_W[i] += self.dW_list[i] ** 2  
+            self.G_b[i] += self.db_list[i] ** 2
+            # рассчитываем адаптивный шаг
+            adj_lr_w = lr / (np.sqrt(self.G_W[i]) + self.epsilon)
+            adj_lr_b = lr / (np.sqrt(self.G_b[i]) + self.epsilon)
+            # обновляем параметры с адаптивным шагом
+            self.W[i] -= adj_lr_w * self.dW_list[i]
+            self.b[i] -= adj_lr_b * self.db_list[i] 
+
+
+    def update_rmsprop(self, lr: np.float64) -> None:
+        """
+        RMSProp: модификация AdaGrad
+        ----------------------------
+
+        Идея: не накапливать квадраты градиентов до бесконечности, а использовать скользящее (экспоненциальное) среднее, чтобы шаг не «умирал». 
+
+        Необходим коэффициент затухания  beta (Например 0.9)
+
+        По умолчанию списки инициализируеются нулями при создании модели.
+        """
+        if self.beta:
+            for i in range(len(self.W)):
+                # обновляем скользящее среднее квадрата градиента
+                self.S_W[i] = self.beta * self.S_W[i] + (1 - self.beta) * (self.dW_list[i] ** 2)
+                self.S_b[i] = self.beta * self.S_b[i] + (1 - self.beta) * (self.db_list[i] ** 2)
+                # вычисляем адаптивный шаг
+                adj_lr_w = lr / (np.sqrt(self.S_W[i]) + self.epsilon)
+                adj_lr_b = lr / (np.sqrt(self.S_b[i]) + self.epsilon)
+                # обновляем параметры
+                self.W[i] -= adj_lr_w * self.dW_list[i]
+                self.b[i] -= adj_lr_b * self.db_list[i] 
+        else:
+            self.update_params(lr)
+
+
+    def update_adam(self, lr: np.float64) -> None:
+        if self.beta and self.beta_two:
+            self.iterations += 1
+            for i in range(len(self.W)):
+                # обновление первого момента (скользящее среднее градиента)
+                self.V_W[i] = self.beta * self.V_W[i] + (1 - self.beta) * self.dW_list[i]
+                self.V_b[i] = self.beta * self.V_b[i] + (1 - self.beta) * self.db_list[i]
+                # обновление второго момента (скользящее среднее квадрата градиента)
+                self.S_W[i] = self.beta_two * self.S_W[i] + (1 - self.beta_two) * (self.dW_list[i] ** 2)
+                self.S_b[i] = self.beta_two * self.S_b[i] + (1 - self.beta_two) * (self.db_list[i] ** 2)
+                # коррекция смещения моментов (bias correction)
+                V_corr_w = self.V_W[i] / (1 - self.beta ** self.iterations)
+                V_corr_b = self.V_b[i] / (1 - self.beta ** self.iterations)
+                S_corr_w = self.S_W[i] / (1 - self.beta_two ** self.iterations)
+                S_corr_b = self.S_b[i] / (1 - self.beta_two ** self.iterations)
+                # обновляем параметры
+                self.W[i] -= lr * V_corr_w / (np.sqrt(S_corr_w) + self.epsilon)
+                self.b[i] -= lr * V_corr_b / (np.sqrt(S_corr_b) + self.epsilon) 
+        else:
+            self.update_params(lr)
 
     def forward_with_activations(self, X: ArrayLike) -> List[NDArray[np.float64]]:
         """

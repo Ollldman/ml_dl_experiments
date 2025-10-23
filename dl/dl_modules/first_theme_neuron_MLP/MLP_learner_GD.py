@@ -165,10 +165,26 @@ class MLP_learner_GD():
     #                     #
     #######################
     def _mini_batch_gd(self,
-                       learning_rate_strategy: str | None=None,
-                       decay_factor: float | None=None,
-                       k_for_decay_step: int | None=None) -> None:
+                       learning_rate_strategy: str | None = None,
+                       decay_factor: float | None = None,
+                       k_for_decay_step: int | None = None,
+                       k_for_exp_fall: float| None = None,
+                       k_for_one_on_t: float | None = None,
+                       patience: int| None = None,
+                       wait: int | None = None,
+                       X_val = None,
+                       Y_val = None) -> None:
+            
+            """
+            learning_rate_strategy from ["step_decay", "exp_fall"(exponential_fall)]
+            """
+            print(f"Using Mini-batch GD with learning rate update strategy: {learning_rate_strategy}")
             for epoch in range(1, self.epochs+1):
+                if learning_rate_strategy == "exp_fall" and k_for_exp_fall:
+                    self.lr *= np.exp(-k_for_exp_fall * epoch)
+                elif learning_rate_strategy == "one_ont_t" and k_for_one_on_t:
+                    self.lr /= (1 + k_for_one_on_t * epoch)
+
                 # Перетасовываем, для избежания быстрого переобучения
                 perm: NDArray[np.long] = np.random.permutation(len(self.X))
                 # Выделяем только те части, которые попали от permutation
@@ -203,13 +219,41 @@ class MLP_learner_GD():
 
                 if epoch % self.epoch_output == 0:
                     print(f"Epoch {epoch:3d}, loss={self.loss_history[-1]:.4f}")
+                
+                if \
+                    learning_rate_strategy == 'reduce_on_plateu'\
+                    and patience \
+                    and wait \
+                    and X_val \
+                    and Y_val:
+                    best_val_loss = -np.inf
+                    val_preds = self.estimator.forward(X_val)
+                    val_loss = self._loss_function(val_preds, Y_val)  # например, MSE
+                    print(f"Epoch {epoch}: val_loss = {val_loss:.4f}, lr = {self.lr:.5f}")
+
+                    if val_loss < best_val_loss:
+                        best_val_loss = val_loss
+                        wait = 0
+                    else:
+                        wait += 1
+                        if wait >= patience:
+                            self.lr *= 0.5
+                            wait = 0
+                            print(f"  → Plateau reached. New lr = {self.lr:.5f}") 
+
 
 
     def _batch_GD(self,
                    learning_rate_strategy: str | None=None,
                    decay_factor: float | None=None,
-                   k_for_decay_step: int | None=None) -> None:
+                   k_for_decay_step: int | None=None,
+                   k_for_exp_fall: float | None = None) -> None:
         for epoch in range(1, self.epochs+1):
+            if learning_rate_strategy == "exp_fall" and k_for_exp_fall:
+                    self.lr *= np.exp(-k_for_exp_fall * epoch)
+            else:
+                raise ValueError(
+                    f"That K_for_exp_fall is not exist: {k_for_exp_fall}")
             preds = self.estimator.forward(self.X)
             loss = self._loss_function(preds=preds, y_true=self.y)
             self.loss_history.append(loss)
