@@ -9,11 +9,12 @@ class SimpleNN(nn.Module):
     relu: nn.ReLU
     fc2: nn.Linear
 
-    def __init__(self) -> None:
+    def __init__(self, in_features: int) -> None:
         # Базовая инициализация nn.Module
         super().__init__()
+        self.in_features: int = in_features
         # Линейный слой: принимает тензор размера [..., 10], выдаёт [..., 5]
-        self.fc1 = nn.Linear(in_features=10, out_features=5)
+        self.fc1 = nn.Linear(in_features=self.in_features, out_features=5)
         # Функция активации ReLU
         self.relu = nn.ReLU()
         # Линейный слой: принимает [..., 5], выдаёт [..., 1]
