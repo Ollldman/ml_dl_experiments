@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Any, List, Sequence
+from typing import List, Sequence
 from numpy.typing import ArrayLike, NDArray
 
 from func_activation import (
@@ -10,7 +10,6 @@ from func_activation import (
     tanh_derivative,
     sin_f,
     sin_derivative)
-from metrics import mse
 
 class MLP:
 
@@ -22,7 +21,9 @@ class MLP:
             beta_two: np.float64 | None = None,
             weight_decay: np.float64 | None = None,
             activation: str = 'sigmoid',
-            l_reg: np.float64 | None = None)-> None:
+            l1: np.float64 = np.float64(0),
+            l2: np.float64 = np.float64(0),
+            dropout: np.float64 = np.float64(0))-> None:
         # Архитектура сети
         self.layer_sizes: NDArray[np.integer] = np.asarray(layer_sizes, dtype=int)
         # Функция активации
@@ -63,7 +64,9 @@ class MLP:
         # Коэффициент для деления на ноль:
         self.epsilon: float = 10e-8
         self.iterations: int = 0
-        self.l_reg: np.float64 | None = l_reg if l_reg else np.float64(1.0)
+        self.l1: np.float64 | int  = l1
+        self.l2: np.float64 | int  = l2
+        self.dropout: np.float64 | int  = dropout
 
         # Инициализация весов и смещений сети
         # В цикле заполнить self.W и self.b случайными параметрами
@@ -89,6 +92,9 @@ class MLP:
                 # Моменты для смещений и весов
                 self.V_W = [np.zeros_like(w) for w in self.W]
                 self.V_b = [np.zeros_like(b) for b in self.b]
+
+        # КОнтейнер для масок Dropout
+        self.masks = [None] * (len(self.W) - 1) # только скрытые слои
             
 
     def _activation(
@@ -124,7 +130,7 @@ class MLP:
             raise ValueError(f'Unknown activation {self.activation}')
 
     # Метод forward    
-    def forward(self, X: ArrayLike) -> NDArray[np.float64]:
+    def forward(self, X: ArrayLike, train=True) -> NDArray[np.float64]:
         """
         Forward to MLP
         При первом вызове заполняет значения Z и активаций для каждого слоя.
@@ -147,11 +153,13 @@ class MLP:
             # Высчитываем линейную функцию - скалярное произведение входов на веса + bias
             Z: NDArray[np.float64] = A @ W + b
             self.Z_list.append(Z)
-            # Определяем функцию активации пока только для всех слоев, кроме выходного, т.к. там выбор функции влияет на характер решаемой задачи (классификация или регрессия)
-            if i < len(self.W) - 1:
-                A = self._activation(Z)
-            else:
-                A = Z  # линейный выход для последнего слоя
+            # Определяем функцию активации пока только для скрытых слоев, кроме выходного, т.к. там выбор функции влияет на характер решаемой задачи (классификация или регрессия)
+            A = self._activation(Z) if i < len(self.W)-1 else Z
+            # Dropout:
+            if train and self.dropout > 0 and i < len(self.W) - 1:
+                mask = (np.random.rand(*A.shape) > self.dropout) / (1 - self.dropout)
+                A *= mask
+                self.masks[i] = mask # type:ignore
             # Добавляем получившуюся активацию
             self.A_list.append(A)
         return A
@@ -176,7 +184,7 @@ class MLP:
         # Градиенты для выходного слоя
         a_prev: NDArray[np.float64] = self.A_list[-2]
         # dW^L = A^{L-1}ᵀ · δ^L
-        dW: NDArray[np.float64] = a_prev.T @ delta
+        dW: NDArray[np.float64] = a_prev.T @ delta + self.l2 * self.W[-1] + self.l1 * np.sign(self.W[-1])
         db: NDArray[np.float64] = np.sum(delta, axis=0, keepdims=True)
 
         self.dW_list = [dW]
@@ -188,12 +196,15 @@ class MLP:
             z: NDArray[np.float64] = self.Z_list[l - 1]
             a_prev = self.A_list[l - 1]
             W_next: NDArray[np.float64] = self.W[l]  # веса слоя l+1
-
+            
             # δ^l = (δ^{l+1} · W^{l+1}ᵀ) * σ'(z^l)
             delta = (delta @ W_next.T) * self._activation_derivative(z)
+            if self.dropout > 0:
+                self.masks = np.asarray(self.masks)
+                delta *= self.masks[l-1]
 
-            # Градиенты для слоя l
-            dW = a_prev.T @ delta
+            # Градиенты для слоя l + регуляризации
+            dW = a_prev.T @ delta + self.l2 * self.W[l - 1] + self.l1 * np.sign(self.W[l-1])
             db = np.sum(delta, axis=0, keepdims=True)
 
             # Вставляем в начало, чтобы порядок совпадал с W и b
