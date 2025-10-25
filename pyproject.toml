@@ -1,9 +1,12 @@
 [project]
-name = "ml-dl-experiments"
+name = "ml_dl_experiments"
 version = "0.1.0"
 description = "This is my ml_dl libraries and hardcode for AI"
 authors = [
     {name = "Ollldman",email = "dodrolla@gmail.com"}
+]
+packages = [
+    { include = "ml_dl_experiments" },
 ]
 license = {text = "MIT"}
 readme = "README.md"
@@ -70,7 +73,22 @@ dependencies = [
     "tqdm (==4.67.1)",
     "urllib3 (==2.4.0)",
     "wrapt (==1.17.2)",
-    "clearml (>=2.0.2,<3.0.0)"
+    "clearml (>=2.0.2,<3.0.0)",
+    "nvidia-cublas (==13.0.0.19)",
+    "nvidia-cuda-cupti (==13.0.48)",
+    "nvidia-cuda-nvrtc (==13.0.48)",
+    "nvidia-cuda-runtime (==13.0.48)",
+    "nvidia-cudnn-cu13 (==9.13.0.50)",
+    "nvidia-cufft (==12.0.0.15)",
+    "nvidia-cufile (==1.15.0.42)",
+    "nvidia-curand (==10.4.0.35)",
+    "nvidia-cusolver (==12.0.3.29)",
+    "nvidia-cusparse (==12.6.2.49)",
+    "nvidia-cusparselt-cu13 (==0.8.0)",
+    "nvidia-nccl-cu13 (==2.27.7)",
+    "nvidia-nvjitlink (==13.0.39)",
+    "nvidia-nvshmem-cu13 (==3.3.24)",
+    "nvidia-nvtx (==13.0.39)"
 ]
 
 

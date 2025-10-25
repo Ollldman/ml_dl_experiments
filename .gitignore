@@ -51,7 +51,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
-.csv
+
 # Translations
 *.mo
 *.pot
@@ -206,3 +206,62 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Изображения
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.webp
+*.svg
+
+# Видео
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.wmv
+*.flv
+*.webm
+
+# Аудио
+*.mp3
+*.wav
+*.ogg
+*.flac
+*.aac
+
+# Документы и таблицы
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+*.odt
+*.ods
+*.csv
+*.tsv
+
+# Архивы
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+
+# Бинарные и исполняемые файлы
+*.exe
+*.dll
+*.so
+*.dylib
+*.bin
+
+# Кэш и временные файлы
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
