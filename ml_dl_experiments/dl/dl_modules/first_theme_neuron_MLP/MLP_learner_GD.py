@@ -321,7 +321,7 @@ class MLP_learner_GD():
         for epoch in range(1, self.epochs+1):
             if learning_rate_strategy == "exp_fall" and k_for_exp_fall:
                     self.lr *= np.exp(-k_for_exp_fall * epoch)
-            elif learning_rate_strategy == "one_ont_t" and k_for_one_on_t:
+            elif learning_rate_strategy == "one_on_t" and k_for_one_on_t:
                 self.lr /= (1 + k_for_one_on_t * epoch)
             # Перемешайте индексы наблюдений
             perm = np.random.permutation(len(self.X))
