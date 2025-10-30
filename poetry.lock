@@ -4240,6 +4240,18 @@ optree = ["optree (>=0.13.0)"]
 pyyaml = ["pyyaml"]
 
 [[package]]
+name = "torchsummary"
+version = "1.5.1"
+description = "Model summary in PyTorch similar to `model.summary()` in Keras"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "torchsummary-1.5.1-py3-none-any.whl", hash = "sha256:10f41d1743fb918f83293f13183f532ab1bb8f6639a1b89e5f8592ec1919a976"},
+    {file = "torchsummary-1.5.1.tar.gz", hash = "sha256:981bf689e22e0cf7f95c746002f20a24ad26aa6b9d861134a14bc6ce92230590"},
+]
+
+[[package]]
 name = "torchvision"
 version = "0.24.0"
 description = "image and video datasets and models for torch deep learning"
@@ -4710,4 +4722,4 @@ scikit-learn = ["scikit-learn"]
 [metadata]
 lock-version = "2.1"
 python-versions = "3.13.7"
-content-hash = "b0a408d05adf9889b12d7fc47b859dc165c4de287a71b295e44eae8690de5ca9"
+content-hash = "dceccd7c0a2647752581336ac6c8f515293f6797c631bdde9fd9bf3f9f5d26bf"
