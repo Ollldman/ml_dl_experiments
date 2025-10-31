@@ -1,0 +1,33 @@
+{
+    "model_type": "LogisticRegression",
+    "task": "binary_text_classification",
+    "dataset": "amazon_polarity",
+    "description": "Baseline model for Amazon review polarity classification",
+    "accuracy_val": 0.87,
+    "date_trained": "2025-10-31T17:42:01.568338",
+    "scikit_learn_version": "1.7.2",
+    "vectorizer_type": "CountVectorizer",
+    "model_params": {
+        "C": 1.0,
+        "class_weight": null,
+        "dual": false,
+        "fit_intercept": true,
+        "intercept_scaling": 1,
+        "l1_ratio": null,
+        "max_iter": 1000,
+        "multi_class": "deprecated",
+        "n_jobs": null,
+        "penalty": "l2",
+        "random_state": null,
+        "solver": "lbfgs",
+        "tol": 0.0001,
+        "verbose": 0,
+        "warm_start": false
+    },
+    "vectorizer_name": "CountVectorizer",
+    "classes": [
+        0,
+        1
+    ],
+    "feature_count": 140467
+}

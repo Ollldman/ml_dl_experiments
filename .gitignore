@@ -265,3 +265,7 @@ __marimo__/
 *.log
 .DS_Store
 Thumbs.db
+
+# state_dicts learned models:
+*.pth 
+*.joblib
