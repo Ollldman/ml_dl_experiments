@@ -89,7 +89,8 @@ dependencies = [
     "nvidia-nvjitlink (==13.0.39)",
     "nvidia-nvshmem-cu13 (==3.3.24)",
     "nvidia-nvtx (==13.0.39)",
-    "torchsummary (>=1.5.1,<2.0.0)"
+    "torchsummary (>=1.5.1,<2.0.0)",
+    "datasets (>=4.3.0,<5.0.0)"
 ]
 
 
