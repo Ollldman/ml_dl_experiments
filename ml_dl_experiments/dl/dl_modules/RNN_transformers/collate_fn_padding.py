@@ -48,3 +48,16 @@ def collate_fn_with_sort(batch):
         'labels': labels,          # (batch_size,)
         "lengths": lengths
     }
+
+def collate_fn_with_lengths(batch):
+    texts = [item['text'] for item in batch]
+    labels = torch.stack([item['label'] for item in batch])
+    lengths = torch.tensor([len(seq) for seq in texts], dtype=torch.long)
+    padded_texts = pad_sequence(texts, batch_first=True, padding_value=0)
+
+
+    return {
+        'input_ids': padded_texts, 
+        'lengths': lengths, 
+        'labels': labels
+    }
