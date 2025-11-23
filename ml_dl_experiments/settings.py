@@ -13,6 +13,8 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8")
     
     SOURCE_PATH: str
+    KAGGLE_USERNAME: str
+    KAGGLE_KEY: str
 
 
 
