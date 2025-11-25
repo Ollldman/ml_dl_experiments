@@ -29,7 +29,6 @@ class Classificator(nn.Module):
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x: Tensor) -> Tensor:
-        
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
