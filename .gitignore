@@ -270,3 +270,4 @@ Thumbs.db
 *.pth 
 *.joblib
 *.pt
+poetry.lock
