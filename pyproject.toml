@@ -98,7 +98,9 @@ dependencies = [
     "timm (>=1.0.22,<2.0.0)",
     "spacy (>=3.8.11,<4.0.0)",
     "pymorphy3 (>=2.0.6,<3.0.0)",
-    "opencv-python (>=4.12.0.88,<5.0.0.0)"
+    "opencv-python (>=4.12.0.88,<5.0.0.0)",
+    "albumentations (>=2.0.8,<3.0.0)",
+    "librosa (>=0.11.0,<0.12.0)"
 ]
 
 

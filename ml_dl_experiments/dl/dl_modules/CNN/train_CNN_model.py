@@ -6,7 +6,7 @@ from tqdm import tqdm
 from sklearn.metrics import accuracy_score
 
 # Функция для тренировки модели с выводом статистик
-def train_model(
+def train_image_model(
     model: nn.Module,
     train_loader: DataLoader,
     valid_loader: DataLoader,
@@ -20,12 +20,12 @@ def train_model(
     device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ):
     """
-    Обучает модель с логированием, чекпоинтами и ранней остановкой по точности.
+    Обучает модель CNN с логированием, чекпоинтами и ранней остановкой по точности.
 
     Args:
-        model: Обучаемая модель
-        train_loader: DataLoader для тренировки
-        valid_loader: DataLoader для валидации
+        model: Обучаемая модель 
+        train_loader: DataLoader для тренировки (должен возвращать тензоры image, label ) 
+        valid_loader: DataLoader для валидации (должен возвращать тензоры image, label )
         optimizer: Оптимизатор
         scheduler: Планировщик LR
         criterion: Функция потерь
