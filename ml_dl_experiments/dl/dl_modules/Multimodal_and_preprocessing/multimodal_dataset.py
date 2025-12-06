@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, Union
 import os
 
 import torch
@@ -12,6 +12,7 @@ from timm.models import PretrainedCfg
 import albumentations as A
 from torchvision.transforms import Compose
 
+from ml_dl_experiments.dl import Config
 
 class MultimodalDataset(Dataset):
     """A PyTorch Dataset for multimodal (text + image) classification tasks.
@@ -37,17 +38,24 @@ class MultimodalDataset(Dataset):
 
     def __init__(
         self,
-        df: pd.DataFrame,
-        text_model: str,
-        image_model: str,
+        config: Config,
         transforms: Union[A.Compose, Compose, Callable[[np.ndarray], torch.Tensor]],
-        dataset_root_path: str,
+        dataset_type="train"
     ) -> None:
-        self.df = df.reset_index(drop=True)
-        self.image_cfg: PretrainedCfg = timm.get_pretrained_cfg(image_model) # type:ignore
-        self.tokenizer: PreTrainedTokenizerBase = AutoTokenizer.from_pretrained(text_model)
+        if dataset_type == "train":
+            self.df = pd.read_csv(config.TRAIN_DF_PATH)
+            self.root_path: str = config.TRAIN_DF_PATH
+        else:
+            self.df = pd.read_csv(config.VAL_DF_PATH)
+            self.root_path: str = config.VAL_DF_PATH
+
+        self.image_cfg: PretrainedCfg =\
+              timm.get_pretrained_cfg(config.IMAGE_MODEL_NAME) # type:ignore
+        
+        self.tokenizer: PreTrainedTokenizerBase =\
+              AutoTokenizer.from_pretrained(config.TEXT_MODEL_NAME)
+        
         self.transforms = transforms
-        self.dataset_root_path = dataset_root_path
 
     def __len__(self) -> int:
         """Returns the number of samples in the dataset."""
@@ -68,10 +76,11 @@ class MultimodalDataset(Dataset):
         row = self.df.iloc[idx]
         text: str = row["text"]
         label: int = row["label"]
-        img_path: str = row["image_path"]
+        
 
         # Load image
-        full_img_path = os.path.join(self.dataset_root_path, "images", img_path)
+        img_path: str = row["image_path"]
+        full_img_path = os.path.join(self.root_path, "images", img_path)
         image_pil = Image.open(full_img_path).convert("RGB")
         image_np = np.array(image_pil)
 
@@ -90,49 +99,3 @@ class MultimodalDataset(Dataset):
             "image": image,
         }
 
-
-def collate_fn(
-    batch: List[Dict[str, Any]],
-    tokenizer: PreTrainedTokenizerBase,
-    max_length: Optional[int] = None,
-) -> Dict[str, torch.Tensor]:
-    """Collates a batch of samples into tensors for multimodal training.
-
-    Tokenizes text, stacks images, and converts labels to tensors.
-
-    Args:
-        batch (List[Dict[str, Any]]): List of samples from MultimodalDataset.
-        tokenizer (PreTrainedTokenizerBase): Hugging Face tokenizer.
-        max_length (Optional[int]): Max sequence length for tokenization.
-            If None, tokenizer's default is used.
-
-    Returns:
-        Dict[str, torch.Tensor]: Batch dictionary with keys:
-            - 'label': (B,)
-            - 'image': (B, C, H, W)
-            - 'input_ids': (B, L)
-            - 'attention_mask': (B, L)
-    """
-    texts: List[str] = [item["text"] for item in batch]
-    images: List[torch.Tensor] = [item["image"] for item in batch]
-    labels: List[int] = [item["label"] for item in batch]
-
-    # Stack images (assumes all have same shape after transforms)
-    image_tensor = torch.stack(images, dim=0)  # (B, C, H, W)
-    label_tensor = torch.LongTensor(labels)    # (B,)
-
-    # Tokenize texts
-    tokenized = tokenizer(
-        texts,
-        return_tensors="pt",
-        padding=True,
-        truncation=True,
-        max_length=max_length,
-    )
-
-    return {
-        "label": label_tensor,
-        "image": image_tensor,
-        "input_ids": tokenized["input_ids"],
-        "attention_mask": tokenized["attention_mask"],
-    } # type:ignore
