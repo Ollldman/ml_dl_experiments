@@ -127,7 +127,8 @@ def train_multimodal_model(config: Config) -> None:
                 )
                 pbar.set_postfix({"Loss": f"{loss.item():.4f}"})
                 pbar.update(1)
-        result_batch_f1_train_score = f1_metric_train.compute()
+        result_epoch_f1_train_score = f1_metric_train.compute().cpu().numpy()
+        f1_metric_train.reset()
 
         val_f1 = validate(
             model=model, 
@@ -137,7 +138,7 @@ def train_multimodal_model(config: Config) -> None:
         f1_metric.reset()
 
         print(
-            f"Epoch {epoch+1}/{config.EPOCHS} \n| avg_Loss: {total_loss/len(train_loader):.4f}\n| Train F1: {result_batch_f1_train_score} \n| Val F1: {val_f1 :.4f}")
+            f"Epoch {epoch+1}/{config.EPOCHS} \n| avg_Loss: {total_loss/len(train_loader):.4f}\n| Train F1: {result_epoch_f1_train_score} \n| Val F1: {val_f1 :.4f}")
 
         # === Сохранение лучшей модели ===
         if val_f1 > best_f1:
@@ -156,7 +157,7 @@ def validate(
     fone: Metric) -> float:
     """Compute validation accuracy."""
     model.eval()
-    correct = total = 0
+
     for batch in val_loader:
         inputs = {
             "input_ids": batch["input_ids"].to(device),
