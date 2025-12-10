@@ -55,7 +55,6 @@ def collate_fn_with_lengths(batch):
     lengths = torch.tensor([len(seq) for seq in texts], dtype=torch.long)
     padded_texts = pad_sequence(texts, batch_first=True, padding_value=0)
 
-
     return {
         'input_ids': padded_texts, 
         'lengths': lengths, 
