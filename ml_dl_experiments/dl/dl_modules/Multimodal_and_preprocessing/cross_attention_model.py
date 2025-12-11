@@ -49,8 +49,8 @@ class BaseMultimodalModel(nn.Module):
         )
         self.hidden_size = text_config.hidden_size
         self.num_features = self.image_model.num_features
+        # Projection layers
         if isinstance(self.hidden_size, int) and isinstance(self.num_features, int): 
-            # Projection layers
             self.text_proj = nn.Linear(self.hidden_size, emb_dim)
             self.image_proj = nn.Linear( self.num_features, emb_dim)
         else:
@@ -192,7 +192,7 @@ class MultimodalModel(nn.Module):
 
         text_emb = self.text_proj(text_features)
         image_emb = self.image_proj(image_features)
-
+        # fuse, may be and summ (concat)
         fused_emb = text_emb * image_emb
         
         logits = self.classifier(fused_emb)
