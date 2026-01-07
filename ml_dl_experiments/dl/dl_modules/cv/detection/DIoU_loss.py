@@ -1,5 +1,8 @@
 import torch
 
+from ml_dl_experiments.dl.dl_modules\
+    .cv.detection.IoU import calculate_iou
+
 tens = torch.Tensor
 def diou_loss(
     preds: tens, 
@@ -30,26 +33,30 @@ def diou_loss(
     targets_x2: tens = targets[..., 0] + targets[..., 2] / 2
     targets_y2: tens = targets[..., 1] + targets[..., 3] / 2
 
-    # Вычисляем IoU
-    # Найдем координаты области пересечения
-    inter_x1: tens = torch.max(preds_x1, targets_x1)
-    inter_y1: tens = torch.max(preds_y1, targets_y1)
-    inter_x2: tens = torch.min(preds_x2, targets_x2)
-    inter_y2: tens = torch.min(preds_y2, targets_y2)
+    # # Вычисляем IoU
+    # # Найдем координаты области пересечения
+    # inter_x1: tens = torch.max(preds_x1, targets_x1)
+    # inter_y1: tens = torch.max(preds_y1, targets_y1)
+    # inter_x2: tens = torch.min(preds_x2, targets_x2)
+    # inter_y2: tens = torch.min(preds_y2, targets_y2)
 
-    # Площадь пересечения. Используйте clamp для избежания отрицательных значений.
-    inter_area: tens = torch.clamp(inter_x2 - inter_x1, min=0)\
-        * torch.clamp(inter_y2 - inter_y1, min=0)
+    # # Площадь пересечения. Используйте clamp для избежания отрицательных значений.
+    # inter_area: tens = torch.clamp(inter_x2 - inter_x1, min=0)\
+    #     * torch.clamp(inter_y2 - inter_y1, min=0)
     
-    # Площади предсказанных и истинных рамок
-    preds_area: tens = preds[..., 2] * preds[..., 3]
-    targets_area: tens = targets[..., 2] * targets[..., 3]
+    # # Площади предсказанных и истинных рамок
+    # preds_area: tens = preds[..., 2] * preds[..., 3]
+    # targets_area: tens = targets[..., 2] * targets[..., 3]
     
-    # Площадь объединения
-    union_area: tens = preds_area + targets_area - inter_area + eps
+    # # Площадь объединения
+    # union_area: tens = preds_area + targets_area - inter_area + eps
     
-    # Итоговый IoU
-    iou: tens = inter_area / union_area
+    # # Итоговый IoU
+    # iou: tens = inter_area / union_area
+    iou: tens = calculate_iou(
+        torch.stack([preds_x1, preds_y1, preds_x2, preds_y2]),
+        torch.stack([targets_x1, targets_y1, targets_x2, targets_y2]),
+        eps=eps)
 
     # Вычисляем штраф за расстояние (Distance Penalty)
     # Квадрат расстояния между центрами рамок (rho^2)

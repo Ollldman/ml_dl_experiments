@@ -103,6 +103,7 @@ dependencies = [
     "librosa (>=0.11.0,<0.12.0)",
     "torchmetrics (>=1.8.2,<2.0.0)",
     "ultralytics (>=8.3.241,<9.0.0)",
+    "labelimg (>=1.8.6,<2.0.0)",
 ]
 
 
