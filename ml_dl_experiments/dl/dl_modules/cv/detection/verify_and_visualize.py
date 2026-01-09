@@ -62,38 +62,49 @@ def verify_and_visualize(data_yaml_path: str) -> None:
     dataset_root_path_rel: str = data_config['path']
 
     # Построение абсолютных путей
-    yaml_dir: str = os.path.dirname(data_yaml_path)
+    yaml_path: Path  = Path(data_yaml_path).resolve()
+    yaml_dir: Path = yaml_path.parent
     
-    dataset_root_abs_path: str = os.path.abspath(os.path.join(yaml_dir, dataset_root_path_rel))
+    dataset_root_abs_path: Path = (yaml_dir / dataset_root_path_rel).resolve()
+
     
-    train_images_abs_path: str = os.path.abspath(
-        os.path.join(dataset_root_abs_path,
-                     train_images_rel_path))
-    
-    train_labels_abs_path: str = train_images_abs_path.replace("images", "labels")
+    train_images_abs_path: Path = (dataset_root_abs_path / train_images_rel_path).resolve()
+
+    train_labels_abs_path: Path = Path(str(train_images_abs_path).replace("images", "labels")).resolve()
+
 
     # Выбор случайного изображения и его разметки
-    all_images: list[str] = [f for f in os.listdir(train_images_abs_path) if f.endswith(('.jpg', '.jpeg', '.png'))]
+    all_images: list[Path] = [f for f in train_images_abs_path.iterdir() if f.suffix in ['.jpg', '.jpeg', '.png']]
+    
     if not all_images:
         return
         
-    random_image_name: str = random.choice(all_images)
-    image_path: str = os.path.join(train_images_abs_path, random_image_name)
-    label_name: str = random_image_name.replace(".jpg", ".txt")
-    label_path: str = os.path.join(train_labels_abs_path, label_name)
+    random_image_name: Path = random.choice(all_images)
+    image_path: Path = (train_images_abs_path / random_image_name).resolve()
+    print("Image: ", image_path.name)
+    label_name: Path = Path(random_image_name.name.replace(".jpg", ".txt"))
+    label_path: Path = (train_labels_abs_path / label_name).resolve()
+    print("Label: ", label_path.name)
     # Визуализация
-    image: MatLike | None = cv2.imread(image_path)
+    image: MatLike | None = cv2.imread(str(image_path))
     if image is not None:
         img_height, img_width, _ = image.shape
         
-        if not os.path.exists(label_path):
+        if not label_path.exists():
             print("Для этого изображения нет файла разметки")
+            
         else:
             with open(label_path, 'r') as f:
                 lines: list[str] = f.readlines()
+                if not lines:
+                    print("Файл разметки пуст!")
+                    return
                 for line in lines:
                     parts: list[str] = line.strip().split()
-                    print(parts)
+                    print("bbox:\n", parts)
+                    if len(parts) > 5:
+                        print("Длина кодировка bbox больше 5!")
+                        continue
                     # Распарсите строку из `.txt` файла.
                     # 1. Извлеките `class_id`, `x_center`, `y_center`, `width`, `height`.
                     # 2. Не забудьте преобразовать строки в `int` и `float`.
@@ -105,7 +116,7 @@ def verify_and_visualize(data_yaml_path: str) -> None:
                     box_h: int = int(height * img_height)
                     x_min: int = int((x_center * img_width) - box_w / 2)
                     y_min: int = int((y_center * img_height) - box_h / 2)
-                    print([box_w, box_h, x_min, y_min])
+                    print("Scaled bbox:\n", [box_w, box_h, x_min, y_min])
                     
                     # Рисуем рамку и подпись
                     class_name: str = class_names[class_id]
@@ -115,7 +126,7 @@ def verify_and_visualize(data_yaml_path: str) -> None:
         # Отображаем результат
         plt.figure(figsize=(10, 10))
         plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-        plt.title(f"Верификация разметки: {random_image_name}")
+        plt.title(f"Верификация разметки: {random_image_name.name}")
         plt.axis('off')
         plt.show()
     else:

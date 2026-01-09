@@ -271,3 +271,4 @@ Thumbs.db
 *.joblib
 *.pt
 poetry.lock
+ml_dl_experiments/dl/dl_modules/cv/data/
