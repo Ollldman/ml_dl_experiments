@@ -104,6 +104,7 @@ dependencies = [
     "torchmetrics[detection] (>=1.8.2,<2.0.0)",
     "ultralytics (>=8.3.241,<9.0.0)",
     "pandoc (>=2.4,<3.0)",
+    "einops (>=0.8.1,<0.9.0)",
 ]
 
 
