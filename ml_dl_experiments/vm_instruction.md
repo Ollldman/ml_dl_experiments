@@ -65,3 +65,55 @@ Host ***.***.***.***
 4. Через некоторое время VS Code подключится к SSH-серверу и настроит себя. После подключения вы окажетесь в пустом окне. Вы всегда можете  просмотреть строку состояния, чтобы узнать, к какому хосту вы  подключены.
 
 5. Затем вы можете открыть любую папку или рабочую область на удалённой машине, используя File → Open File или File → Open Folder точно так же, как вы делали бы это локально.
+
+# Инструкция по настройке mmdetection-mmsegmentation на VM:
+
+Для начала развертывания MMDetection на виртуальной машине, установим библиотеки из экосистемы OpenMMLab: `mmcv` и `mmengine`.
+
+При использовании `GPU` важно правильно подобрать версии. Для некоторых версий `PyTorch` нет предсобранных версий `MMCV`. В этом случае установщик соберёт `MMCV` из исходников, но получится облегчённая версия без CUDA-операторов, и при работе с `MMSegmentation` будут возникать ошибки. 
+
+
+Официальная документация указывает, что `MMDetection` поддерживает `PyTorch` с версии 1.8.0. Но важно учитывать комбинацию PyTorch и CUDA, чтобы был пакет MMCV, подходящий под версию PyTorch.
+
+В этом уроке используем проверенный набор:
+
+- PyTorch 2.1.0,
+    
+- CUDA 12.2.
+
+Теперь установите пакеты `torchvision`, `mmcv` и `mmengine`:
+```shell
+python3.10 -m pip install --upgrade pip setuptools wheel
+pip3.10 install torch==2.1.0+cu121 torchvision==0.16.0+cu121 torchaudio==2.1.0+cu121 --index-url https://download.pytorch.org/whl/cu121
+
+pip3.10 install -U openmim
+mim install mmengine
+mim install "mmcv==2.1.0" 
+```
+
+Далее установите MMDetection в корень вашего проекта:
+
+```shell
+// Мы специально делаем понижение версии numpy для корректной установки зависимостей mmdetection
+pip3.10 install numpy==1.26.4
+
+git clone https://github.com/open-mmlab/mmdetection.git
+cd mmdetection
+pip3.10 install . --no-build-isolation
+```
+
+Теперь установите дополнительные пакеты, которые могут понадобиться при работе:
+
+```shell
+pip3.10 install pyyaml==6.0.1
+pip3.10 install opencv-python==4.8.1.78
+pip3.10 install seaborn==0.13.2
+pip3.10 install ultralytics==8.0.196
+pip3.10 install tqdm==4.65.0
+pip3.10 install fpdf2==2.7.6
+```
+
+Вы установили нужные зависимости. Внутри рабочей директории развернулась библиотека `mmdetection` , и вы можете приступать к выполнению проекта.
+
+Отключение от виртуальной машины
+Когда вы закончите работу над проектом, закройте соединение: выберите File → Close remote Connection.
