@@ -84,14 +84,14 @@ Host ***.***.***.***
 Теперь установите пакеты `torchvision`, `mmcv` и `mmengine`:
 ```shell
 python3.10 -m pip install --upgrade pip setuptools wheel
-pip3.10 install torch==2.1.0+cu121 torchvision==0.16.0+cu121 torchaudio==2.1.0+cu121 --index-url https://download.pytorch.org/whl/cu121
+pip3.10 install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 ---extra-index-url https://download.pytorch.org/whl/cu118
 
 pip3.10 install -U openmim
 mim install mmengine
 mim install "mmcv==2.1.0" 
 ```
 
-Далее установите MMDetection в корень вашего проекта:
+Далее установите MMDetection и MMSegmentation в корень вашего проекта:
 
 ```shell
 // Мы специально делаем понижение версии numpy для корректной установки зависимостей mmdetection
@@ -100,6 +100,16 @@ pip3.10 install numpy==1.26.4
 git clone https://github.com/open-mmlab/mmdetection.git
 cd mmdetection
 pip3.10 install . --no-build-isolation
+cd ..
+```
+
+```shell
+git clone -b main https://github.com/open-mmlab/mmsegmentation.git
+cd mmsegmentation
+pip install -v -e .
+# '-v' means verbose, or more output
+# '-e' means installing a project in editable mode,
+# thus any local modifications made to the code will take effect without reinstallation.
 ```
 
 Теперь установите дополнительные пакеты, которые могут понадобиться при работе:
@@ -113,7 +123,7 @@ pip3.10 install tqdm==4.65.0
 pip3.10 install fpdf2==2.7.6
 ```
 
-Вы установили нужные зависимости. Внутри рабочей директории развернулась библиотека `mmdetection` , и вы можете приступать к выполнению проекта.
+Вы установили нужные зависимости. Внутри рабочей директории развернулась библиотека `mmdetection`, `mmsegmentation` и вы можете приступать к выполнению проекта.
 
 Отключение от виртуальной машины
 Когда вы закончите работу над проектом, закройте соединение: выберите File → Close remote Connection.
