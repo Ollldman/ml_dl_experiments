@@ -1,0 +1,14 @@
+numpy
+pandas 
+matplotlib
+torch
+torchvision
+transformers 
+sentencepiece
+accelerate
+diffusers
+protobuf
+pillow
+tqdm
+ipykernel  
+peft
