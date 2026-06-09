@@ -1,9 +1,11 @@
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
+from ml_dl_experiments.settings import settings
 
+models_path: str = settings.SOURCE_PATH + "ml_dl/models"
 # Загрузка токенизатора и модели
-tokenizer = AutoTokenizer.from_pretrained("/models/rubert-base-cased-sentiment")
-model = AutoModelForSequenceClassification.from_pretrained("/models/rubert-base-cased-sentiment")
+tokenizer = AutoTokenizer.from_pretrained(models_path + "/rubert-tiny-sentiment-balanced")
+model = AutoModelForSequenceClassification.from_pretrained(models_path + "/rubert-tiny-sentiment-balanced")
 
 # Перевод модели в режим оценки
 model.eval()
