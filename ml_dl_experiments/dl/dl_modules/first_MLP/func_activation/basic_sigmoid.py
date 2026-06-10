@@ -1,6 +1,5 @@
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
-from typing import Union
 
 def sigmoid(x: ArrayLike) -> NDArray[np.float64]:
     """
